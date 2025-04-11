@@ -1,16 +1,46 @@
 [project]
-name = "coursework"
+name = "pythonproject"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Makarov.F",email = "fedormakarov634@gmail.com"}
+    {name = "TOLIKLOL777",email = "akonst008@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "pytest (>=8.3.5,<9.0.0)",
+    "pandas (>=2.2.3,<3.0.0)",
+    "openpyxl (>=3.1.5,<4.0.0)",
+    "pandas-stubs (>=2.2.3.250308,<3.0.0.0)",
+    "dotenv (>=0.9.9,<0.10.0)",
+    "python-dotenv (>=1.1.0,<2.0.0)",
+    "isort (>=6.0.1,<7.0.0)"
 ]
 
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.lint.dependencies]
+black = "^25.1.0"
+flake8 = "^7.2.0"
+mypy = "^1.15.0"
+isort = "^6.0.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-cov = "^6.0.0"
+
+[tool.black]
+line-length = 119
+exclude = ".git"
+
+[tool.isort]
+profile = "black"
+line_length = 119
+
+[tool.mypy]
+disallow_untyped_defs = true
+warn_return_any = true
+exclude = "venv"
