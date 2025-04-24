@@ -19,20 +19,13 @@ logger.addHandler(file_handler)
 
 
 def main_sheet(date: str):
-    """Главная функция, принимающую на вход строку с датой и временем в формате YYYY-MM-DD HH:MM:SS
-    и возвращающую JSON-ответ со следующими данными:
-    Приветствие в формате — «Доброе утро» / «Добрый день» / «Добрый вечер» / «Доброй ночи» в зависимости от текущего времени.
-    По каждой карте:
-    последние 4 цифры карты;
-    общая сумма расходов;
-    кешбэк (1 рубль на каждые 100 рублей).
-    Топ-5 транзакций по сумме платежа.
-    Курс валют.
+    """Главная функция, принимающая на вход строку с датой и временем в формате YYYY-MM-DD HH:MM:SS
+    и возвращающую JSON-ответ
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
     user_set_path = os.path.join(base_dir, "..", "user_settings.json")
     logger.info("Открываем и читаем файл")
-    with open(user_set_path) as f:
+    with open(user_set_path, encoding="utf-8") as f:
         data = json.load(f)
     file = XLSX_file_read()
     answer = {"greeting": "", "cards": [], "top_transactions": [], "currency_rates": [], "stock_prices": []}
@@ -49,19 +42,21 @@ def main_sheet(date: str):
     elif 18 <= date.hour < 24:
         message = "Доброй ночи"
 
-    logger.info("Сортируем список по дате")
-    a = []
+    logger.info("Фильтруем операции за период с начала месяца по указанную дату")
+    start_date = date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    filtered_transactions = []
     for i in file:
-        if 1 <= datetime.datetime.strptime(i["Дата платежа"], "%d.%m.%Y").day <= date.day:
-            a.append(i)
+        payment_date = datetime.datetime.strptime(i["Дата платежа"], "%d.%m.%Y")
+        if start_date <= payment_date <= date:
+            filtered_transactions.append(i)
 
-    file = a
+    logger.info(f"Отфильтрованные даты платежей: {[elem['Дата платежа'] for elem in filtered_transactions]}")
 
     logger.info("Вызываем функцию чтобы получить банковские карты")
-    cards = get_cards(file)
+    cards = get_cards(filtered_transactions)
 
     logger.info("Сортируем список по сумме операций и получаем самые большие транзакции")
-    top_transactions = get_top_transactions(file)
+    top_transactions = get_top_transactions(filtered_transactions)
 
     logger.info("Получаем курс валют пользователя с помощью API")
     currency_rates = get_currency(data)
@@ -80,9 +75,9 @@ def main_sheet(date: str):
 
 
 def get_top_transactions(data):
-    """Принимает на вход транзакций список транзакций, сортируем его по возрастанию в цене и выводим 5 самых больших транзакций"""
+    """Принимает на вход список транзакций, сортируем его по убыванию суммы и выводим 5 самых больших транзакций"""
     top_transactions = []
-    sorted_file = sorted(data, key=lambda x: x.get("Сумма операции с округлением"), reverse=True)
+    sorted_file = sorted(data, key=lambda x: x.get("Сумма операции с округлением", 0), reverse=True)
     for i in range(min(5, len(sorted_file))):
         top_transactions.append(
             {
@@ -99,15 +94,17 @@ def get_cards(file):
     numbers = []
     cards = []
     for i in file:
-        if i["Номер карты"][1:] not in numbers:
-            numbers.append(i["Номер карты"][1:])
+        card_num = i["Номер карты"][1:]
+        if card_num not in numbers:
+            numbers.append(card_num)
 
-    for i in numbers:
-        cards.append({"last_digits": i, "total_spent": 0, "cashback": 0})
+    for num in numbers:
+        cards.append({"last_digits": num, "total_spent": 0, "cashback": 0})
 
     for i in file:
+        card_num = i["Номер карты"][1:]
         for j in cards:
-            if i["Номер карты"][1:] == j["last_digits"]:
+            if card_num == j["last_digits"]:
                 if i["Сумма операции"] < 0:
                     j["total_spent"] += i["Сумма операции с округлением"]
                 if not isnan(i["Кэшбэк"]):
